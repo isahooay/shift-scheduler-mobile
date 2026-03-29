@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>排休系統 V4（路線版｜手機優化）</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#111827; --line:#334155; --text:#e5e7eb; --muted:#94a3b8;
+    --green:#34d399; --red:#f87171; --blue:#38bdf8; --yellow:#facc15;
+  }
+  *{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{margin:0;font-family:Arial,"Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1500px;margin:0 auto;padding:20px}
+  h1{margin:0 0 10px;font-size:30px;line-height:1.2}
+  .sub{color:var(--muted);line-height:1.7;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:430px 1fr;gap:16px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;overflow:hidden}
+  .card h2{margin:0 0 12px;font-size:20px}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .person-box,.route-box{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#0b1220}
+  .person-top,.route-row{display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:end;margin-bottom:10px}
+  .pin-rule{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input,select,button{
+    width:100%;padding:12px 12px;border-radius:10px;border:1px solid var(--line);
+    background:#07101d;color:var(--text);font-size:15px;min-height:44px;
+  }
+  button{cursor:pointer;touch-action:manipulation}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .btn-primary{background:#0ea5e9;border:none;font-weight:700}
+  .btn-green{background:#16a34a;border:none;font-weight:700}
+  .btn-red{background:#dc2626;border:none;font-weight:700}
+  .hint{font-size:12px;line-height:1.6;color:var(--muted)}
+  .mobile-tip{
+    display:none;margin:10px 0 14px;padding:10px 12px;border-radius:12px;
+    border:1px solid #3b556f;background:#0b1220;color:#cbd5e1;font-size:12px;line-height:1.6;
+  }
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#221737;border:1px solid #5b3f87;font-size:12px;margin:4px 4px 0 0;flex-wrap:wrap}
+  .chip button{width:auto;min-height:auto;padding:4px 8px;font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 14px}
+  .legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .calendar-wrap{
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    border:1px solid var(--line);border-radius:12px;background:#0b1220;
+  }
+  table{width:100%;min-width:1050px;border-collapse:collapse}
+  th,td{border:1px solid #475569;padding:8px;text-align:center;font-size:13px;white-space:nowrap}
+  th{background:#172033;position:sticky;top:0;z-index:2}
+  .name-cell{position:sticky;left:0;background:#111827;font-weight:700;text-align:left;min-width:110px;z-index:1}
+  .weekend{background:rgba(250,204,21,.06)}
+  .work{background:rgba(52,211,153,.10)}
+  .off{background:rgba(248,113,113,.18);color:#ffd8d8;font-weight:700}
+  .pinned{background:rgba(56,189,248,.18);color:#d9f3ff;font-weight:700}
+  .leader-support{background:rgba(250,204,21,.14);color:#fde68a;font-weight:700}
+  .log{white-space:pre-wrap;line-height:1.7;background:#08101f;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;max-height:300px;overflow:auto}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+  .summary .item{background:#08101f;border:1px solid var(--line);border-radius:12px;padding:12px}
+  .summary .title{font-size:13px;color:var(--muted)}
+  .summary .value{font-size:24px;font-weight:800}
+
+  @media (max-width:1100px){
+    .grid{grid-template-columns:1fr}
+    .summary{grid-template-columns:repeat(2,1fr)}
+  }
+
+  @media (max-width:768px){
+    .wrap{padding:12px}
+    h1{font-size:24px}
+    .card{padding:12px;border-radius:14px}
+    .card h2{font-size:18px}
+    .controls,.person-top,.route-row,.pin-rule,.btn-row{grid-template-columns:1fr}
+    .person-top,.route-row{gap:8px}
+    .pin-rule{gap:10px}
+    .summary{grid-template-columns:1fr}
+    .legend{gap:8px}
+    .legend span{font-size:12px}
+    .mobile-tip{display:block}
+    .calendar-wrap{margin:0 -2px}
+    table{min-width:760px}
+    th,td{padding:6px;font-size:12px}
+    .name-cell{min-width:78px;font-size:12px}
+    .log{max-height:220px}
+  }
+
+  @media (max-width:420px){
+    .wrap{padding:10px}
+    input,select,button{font-size:16px}
+    table{min-width:700px}
+    th,td{padding:5px;font-size:11px}
+    .name-cell{min-width:72px}
+    .chip{display:flex;border-radius:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>排休系統 V4（路線版｜手機優化）</h1>
+  <div class="sub">
+    設定區第一優先。<br>
+    <b>橫向</b>：每人休假天數 = 設定值、最多連做 6 天、左右連休最多 2 天（若該人月休 &gt; 11 天，可 3 連休）。<br>
+    <b>縱向</b>：每天至少 1 人休、同日最多 2 人休。<br>
+    <b>路線</b>：組員上班顯示 B / C / E；組長支援顯示 <b>支B / 支C / 支E</b>。若兩人休假：有 B 就優先 B；若是 C+E 休，就優先 E。
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>設定區</h2>
+        <div class="controls">
+          <div>
+            <label>年份</label>
+            <input type="number" id="year" value="2026">
+          </div>
+          <div>
+            <label>月份</label>
+            <select id="month"></select>
+          </div>
+        </div>
+        <div id="personSettings"></div>
+        <div class="btn-row">
+          <button class="btn-primary" id="generateBtn">自動排休</button>
+          <button class="btn-green" id="saveBtn">儲存設定</button>
+        </div>
+        <div class="btn-row">
+          <button id="exportBtn">匯出設定 JSON</button>
+          <button class="btn-red" id="clearBtn">清空本頁設定</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>路線設定</h2>
+        <div id="routeSettings"></div>
+        <div class="hint">預設：組員1 = B、組員2 = C、組員3 = E。可自行改字。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>排班結果</h2>
+      <div class="legend">
+        <span><i class="dot" style="background:#34d399"></i>上班 / 路線</span>
+        <span><i class="dot" style="background:#f87171"></i>休假</span>
+        <span><i class="dot" style="background:#38bdf8"></i>指定休假</span>
+        <span><i class="dot" style="background:#facc15"></i>組長支援</span>
+      </div>
+      <div class="mobile-tip">手機上可左右滑動排班表，設定區按鈕已放大，輸入欄位也改成比較好按。</div>
+      <div class="calendar-wrap" id="calendarWrap"></div>
+      <div class="summary" id="summaryBox"></div>
+      <div class="log" id="logBox">尚未產生排班。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PEOPLE = [
+  { key:'leader', defaultName:'組長' },
+  { key:'member1', defaultName:'組員1' },
+  { key:'member2', defaultName:'組員2' },
+  { key:'member3', defaultName:'組員3' }
+];
+const MEMBER_KEYS = ['member1','member2','member3'];
+const state = { 
+  people:{}, 
+  routes:{ member1:'B', member2:'C', member3:'E' },
+  schedule:null 
+};
+
+const yearEl = document.getElementById('year');
+const monthEl = document.getElementById('month');
+const personSettingsEl = document.getElementById('personSettings');
+const routeSettingsEl = document.getElementById('routeSettings');
+const calendarWrapEl = document.getElementById('calendarWrap');
+const summaryBoxEl = document.getElementById('summaryBox');
+const logBoxEl = document.getElementById('logBox');
+
+function initMonthOptions(){
+  monthEl.innerHTML = '';
+  for(let i=1;i<=12;i++){
+    const o=document.createElement('option');
+    o.value=i; o.textContent=`${i} 月`;
+    monthEl.appendChild(o);
+  }
+  monthEl.value = 4;
+}
+function getDaysInMonth(year, month){ return new Date(year, month, 0).getDate(); }
+function weekdayText(year, month, day){ return ['日','一','二','三','四','五','六'][new Date(year, month-1, day).getDay()]; }
+function isWeekend(year, month, day){ const w = new Date(year, month-1, day).getDay(); return w===0 || w===6; }
+function formatRange(start,end){ return `${start} ~ ${end}`; }
+
+function ensurePeople(){
+  PEOPLE.forEach(p=>{
+    if(!state.people[p.key]){
+      state.people[p.key] = { name:p.defaultName, offDays:11, pinnedRanges:[] };
+    }
+  });
+}
+
+function renderPinList(key){
+  const box = document.getElementById(`pinList-${key}`);
+  if(!box) return;
+  box.innerHTML = '';
+  const arr = state.people[key].pinnedRanges;
+  if(!arr.length){ box.innerHTML = '<span class="hint">尚未指定日期</span>'; return; }
+  arr.forEach((r,idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `<span>${formatRange(r.start,r.end)}</span><button type="button">刪除</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      state.people[key].pinnedRanges.splice(idx,1);
+      renderPinList(key);
+      saveToLocal();
+    });
+    box.appendChild(chip);
+  });
+}
+
+function renderSettings(){
+  ensurePeople();
+  personSettingsEl.innerHTML = '';
+  PEOPLE.forEach(p=>{
+    const data = state.people[p.key];
+    const box = document.createElement('div');
+    box.className = 'person-box';
+    box.innerHTML = `
+      <div class="person-top">
+        <div>
+          <label>名稱</label>
+          <input type="text" value="${data.name}" data-role="name" data-key="${p.key}">
+        </div>
+        <div>
+          <label>休假天數</label>
+          <input type="number" min="0" max="31" value="${data.offDays}" data-role="offDays" data-key="${p.key}">
+        </div>
+      </div>
+      <div class="pin-rule">
+        <div>
+          <label>指定開始日</label>
+          <input type="date" data-role="pinStart" data-key="${p.key}">
+        </div>
+        <div>
+          <label>指定結束日</label>
+          <input type="date" data-role="pinEnd" data-key="${p.key}">
+        </div>
+        <div>
+          <button type="button" data-role="addPin" data-key="${p.key}">新增指定</button>
+        </div>
+      </div>
+      <div class="hint">指定休假為硬性安排，不會被覆蓋。</div>
+      <div id="pinList-${p.key}"></div>
+    `;
+    personSettingsEl.appendChild(box);
+    renderPinList(p.key);
+  });
+
+  personSettingsEl.querySelectorAll('input[data-role="name"]').forEach(el=>{
+    el.addEventListener('input', e=>{
+      state.people[e.target.dataset.key].name = e.target.value || PEOPLE.find(p=>p.key===e.target.dataset.key).defaultName;
+      renderRouteSettings();
+      saveToLocal();
+    });
+  });
+  personSettingsEl.querySelectorAll('input[data-role="offDays"]').forEach(el=>{
+    el.addEventListener('input', e=>{
+      state.people[e.target.dataset.key].offDays = Math.max(0, Math.min(31, Number(e.target.value)||0));
+      saveToLocal();
+    });
+  });
+  personSettingsEl.querySelectorAll('button[data-role="addPin"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key;
+      const wrap = btn.closest('.person-box');
+      const start = wrap.querySelector('input[data-role="pinStart"]').value;
+      const end = wrap.querySelector('input[data-role="pinEnd"]').value || start;
+      if(!start) return alert('請先選指定開始日');
+      if(new Date(end) < new Date(start)) return alert('結束日不能早於開始日');
+      const exists = state.people[key].pinnedRanges.some(r=>r.start===start && r.end===end);
+      if(!exists) state.people[key].pinnedRanges.push({start,end});
+      wrap.querySelector('input[data-role="pinStart"]').value = '';
+      wrap.querySelector('input[data-role="pinEnd"]').value = '';
+      renderPinList(key);
+      saveToLocal();
+    });
+  });
+}
+
+function renderRouteSettings(){
+  routeSettingsEl.innerHTML = '';
+  MEMBER_KEYS.forEach(key=>{
+    const row = document.createElement('div');
+    row.className = 'route-box';
+    row.innerHTML = `
+      <div class="route-row">
+        <div>
+          <label>${state.people[key].name}</label>
+          <input type="text" value="${state.people[key].name}" disabled>
+        </div>
+        <div>
+          <label>路線</label>
+          <input type="text" value="${state.routes[key] || ''}" data-role="route" data-key="${key}">
+        </div>
+      </div>
+    `;
+    routeSettingsEl.appendChild(row);
+  });
+
+  routeSettingsEl.querySelectorAll('input[data-role="route"]').forEach(el=>{
+    el.addEventListener('input', e=>{
+      state.routes[e.target.dataset.key] = (e.target.value || '').trim();
+      saveToLocal();
+    });
+  });
+}
+
+function expandPinnedDays(ranges, year, month){
+  const set = new Set();
+  ranges.forEach(r=>{
+    if(!r.start) return;
+    const [sy,sm,sd] = r.start.split('-').map(Number);
+    const [ey,em,ed] = (r.end || r.start).split('-').map(Number);
+    let d = new Date(sy, sm-1, sd);
+    const end = new Date(ey, em-1, ed);
+    while(d <= end){
+      if(d.getFullYear()===year && d.getMonth()+1===month) set.add(d.getDate());
+      d.setDate(d.getDate()+1);
+    }
+  });
+  return set;
+}
+
+function maxConsecutiveOff(offDays){ return offDays > 11 ? 3 : 2; }
+function offCountDay(schedule, day){
+  return PEOPLE.filter(p=>schedule[p.key].off.has(day)).length;
+}
+function getWorkStreakBefore(schedule, key, day){
+  let streak = 0;
+  for(let d=day-1; d>=1; d--){
+    if(schedule[key].off.has(d)) break;
+    streak++;
+  }
+  return streak;
+}
+function wouldBreakOffRun(schedule, key, day){
+  const limit = maxConsecutiveOff(schedule[key].offDaysTarget);
+  let left = 0, right = 0;
+  for(let d=day-1; d>=1 && schedule[key].off.has(d); d--) left++;
+  for(let d=day+1; d<=schedule.totalDays && schedule[key].off.has(d); d++) right++;
+  return (left + 1 + right) > limit;
+}
+function canPlaceOff(schedule, key, day){
+  const person = schedule[key];
+  if(person.off.has(day)) return false;
+  if(person.off.size >= person.offDaysTarget) return false;
+  if(offCountDay(schedule, day) >= 2) return false;
+  if(wouldBreakOffRun(schedule, key, day)) return false;
+  return true;
+}
+function scoreCandidate(schedule, key, day){
+  const person = schedule[key];
+  const used = person.off.size;
+  const remainNeed = person.offDaysTarget - used;
+  const remainDays = schedule.totalDays - day + 1;
+  let score = 0;
+
+  score += (remainNeed / Math.max(1, remainDays)) * 14;
+  score += getWorkStreakBefore(schedule, key, day) * 1.8;
+
+  const prevOff = person.off.has(day-1);
+  const prevPrevOff = person.off.has(day-2);
+  if(prevOff && !prevPrevOff) score += 1.4;
+  if(prevOff && prevPrevOff) score -= 99;
+  if(person.off.has(day-2) && !person.off.has(day-1)) score -= 2.2;
+
+  let nearest = 999;
+  person.off.forEach(d=>{ nearest = Math.min(nearest, Math.abs(d-day)); });
+  if(nearest !== 999) score += Math.min(nearest, 4) * 0.7;
+
+  score += Math.random() * 1.0;
+  return score;
+}
+
+function validate(schedule){
+  const issues = [];
+
+  for(let day=1; day<=schedule.totalDays; day++){
+    const c = offCountDay(schedule, day);
+    if(c < 1) issues.push(`第${day}天 沒有人休假`);
+    if(c > 2) issues.push(`第${day}天 超過2人休假`);
+  }
+
+  PEOPLE.forEach(p=>{
+    const person = schedule[p.key];
+    if(person.off.size !== person.offDaysTarget){
+      issues.push(`${person.name} 設定 ${person.offDaysTarget} 天，實際 ${person.off.size} 天`);
+    }
+
+    person.pinned.forEach(day=>{
+      if(!person.off.has(day)){
+        issues.push(`${person.name} 指定休假 ${day} 日未保留`);
+      }
+    });
+
+    let workStreak = 0;
+    let offStreak = 0;
+    const offLimit = maxConsecutiveOff(person.offDaysTarget);
+
+    for(let day=1; day<=schedule.totalDays; day++){
+      if(person.off.has(day)){
+        offStreak++;
+        workStreak = 0;
+        if(offStreak > offLimit){
+          issues.push(`${person.name} 第${day-offStreak+1}~${day}天 左右連休超過 ${offLimit} 天`);
+          break;
+        }
+      }else{
+        workStreak++;
+        offStreak = 0;
+        if(workStreak > 6){
+          issues.push(`${person.name} 第${day-workStreak+1}~${day}天 連做超過6天`);
+          break;
+        }
+      }
+    }
+  });
+
+  return issues;
+}
+
+function leaderSupportText(absentRoutes){
+  if(absentRoutes.length === 0) return '休';
+  if(absentRoutes.length === 1) return `支${absentRoutes[0]}`;
+  if(absentRoutes.includes('B')) return '支B';
+  if(absentRoutes.includes('E')) return '支E';
+  return `支${absentRoutes[0]}`;
+}
+
+function buildSchedule(){
+  const year = Number(yearEl.value);
+  const month = Number(monthEl.value);
+  const totalDays = getDaysInMonth(year, month);
+
+  const schedule = { totalDays, year, month };
+  PEOPLE.forEach(p=>{
+    const person = state.people[p.key];
+    const pinned = expandPinnedDays(person.pinnedRanges, year, month);
+    schedule[p.key] = {
+      name: person.name,
+      offDaysTarget: Number(person.offDays) || 0,
+      pinned,
+      off: new Set([...pinned]),
+      duty: {}
+    };
+  });
+
+  const logs = [];
+
+  PEOPLE.forEach(p=>{
+    if(schedule[p.key].pinned.size > schedule[p.key].offDaysTarget){
+      logs.push(`⚠️ ${schedule[p.key].name} 指定休假 ${schedule[p.key].pinned.size} 天，已超過設定 ${schedule[p.key].offDaysTarget} 天`);
+    }
+  });
+
+  for(let day=1; day<=totalDays; day++){
+    if(offCountDay(schedule, day) >= 1) continue;
+
+    const candidates = PEOPLE
+      .filter(p=>canPlaceOff(schedule, p.key, day))
+      .map(p=>({ key:p.key, score:scoreCandidate(schedule, p.key, day) }))
+      .sort((a,b)=>b.score-a.score);
+
+    if(candidates.length){
+      schedule[candidates[0].key].off.add(day);
+    }else{
+      logs.push(`⚠️ 第${day}天 無法先鋪入至少1人休假`);
+    }
+  }
+
+  PEOPLE.forEach(p=>{
+    let need = schedule[p.key].offDaysTarget - schedule[p.key].off.size;
+    while(need > 0){
+      const candidates = [];
+      for(let day=1; day<=totalDays; day++){
+        if(!canPlaceOff(schedule, p.key, day)) continue;
+        candidates.push({ day, score: scoreCandidate(schedule, p.key, day) });
+      }
+
+      if(!candidates.length){
+        logs.push(`⚠️ ${schedule[p.key].name} 尚缺 ${need} 天，找不到合法位置`);
+        break;
+      }
+
+      candidates.sort((a,b)=>b.score-a.score || a.day-b.day);
+      const pool = candidates.slice(0, Math.min(6, candidates.length));
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      schedule[p.key].off.add(pick.day);
+      need--;
+    }
+  });
+
+  for(let day=1; day<=totalDays; day++){
+    MEMBER_KEYS.forEach(key=>{
+      schedule[key].duty[day] = schedule[key].off.has(day) ? '休' : (state.routes[key] || '班');
+    });
+
+    const absentMembers = MEMBER_KEYS.filter(key => schedule[key].off.has(day));
+    const absentRoutes = absentMembers.map(key => state.routes[key] || '');
+    schedule.leader.duty[day] = schedule.leader.off.has(day) ? '休' : leaderSupportText(absentRoutes);
+  }
+
+  logs.push(...validate(schedule));
+  return { schedule, logs };
+}
+
+function renderResult(result){
+  const { schedule, logs } = result;
+
+  let html = '<table><thead><tr><th>人員</th>';
+  for(let day=1; day<=schedule.totalDays; day++){
+    const weekend = isWeekend(schedule.year, schedule.month, day) ? ' weekend' : '';
+    html += `<th class="${weekend}">${day}<br>${weekdayText(schedule.year, schedule.month, day)}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  PEOPLE.forEach(p=>{
+    const person = schedule[p.key];
+    html += `<tr><td class="name-cell">${person.name}</td>`;
+    for(let day=1; day<=schedule.totalDays; day++){
+      let cls = 'work';
+      let text = person.duty[day] || '班';
+      if(person.pinned.has(day) && person.off.has(day)){ cls = 'pinned'; text = '休'; }
+      else if(person.off.has(day)){ cls = 'off'; text = '休'; }
+      else if(p.key === 'leader' && text.startsWith('支')){ cls = 'leader-support'; }
+      html += `<td class="${cls}">${text}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  calendarWrapEl.innerHTML = html;
+
+  summaryBoxEl.innerHTML = '';
+  PEOPLE.forEach(p=>{
+    const person = schedule[p.key];
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `<div class="title">${person.name}</div><div class="value">${person.off.size}</div><div class="hint">設定 ${person.offDaysTarget} 天 / 指定 ${person.pinned.size} 天</div>`;
+    summaryBoxEl.appendChild(item);
+  });
+
+  const lines = [`${schedule.year} 年 ${schedule.month} 月排班結果：`];
+  PEOPLE.forEach(p=>{
+    const person = schedule[p.key];
+    lines.push(`${person.name}：${[...person.off].sort((a,b)=>a-b).join('、') || '無'}`);
+  });
+  if(logs.length){
+    lines.push('', '衝突 / 提示：', ...[...new Set(logs)]);
+  }else{
+    lines.push('', '排班成功：已套用手機操作優化版。');
+  }
+  logBoxEl.textContent = lines.join('\n');
+}
+
+function saveToLocal(){
+  const payload = { year: yearEl.value, month: monthEl.value, people: state.people, routes: state.routes };
+  localStorage.setItem('shiftSchedulerV4Route_mobile', JSON.stringify(payload));
+}
+function loadFromLocal(){
+  const raw = localStorage.getItem('shiftSchedulerV4Route_mobile') || localStorage.getItem('shiftSchedulerV4Route');
+  if(!raw) return;
+  try{
+    const data = JSON.parse(raw);
+    if(data.year) yearEl.value = data.year;
+    if(data.month) monthEl.value = data.month;
+    if(data.people) state.people = data.people;
+    if(data.routes) state.routes = data.routes;
+  }catch(e){ console.error(e); }
+}
+function exportJson(){
+  const payload = { year: yearEl.value, month: monthEl.value, people: state.people, routes: state.routes };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `排休系統V4路線版_手機優化_${yearEl.value}_${monthEl.value}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function boot(){
+  initMonthOptions();
+  const now = new Date();
+  yearEl.value = now.getFullYear();
+  loadFromLocal();
+  ensurePeople();
+  renderSettings();
+  renderRouteSettings();
+
+  document.getElementById('generateBtn').addEventListener('click', ()=>{
+    const result = buildSchedule();
+    state.schedule = result;
+    renderResult(result);
+    saveToLocal();
+  });
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ saveToLocal(); alert('已儲存設定'); });
+  document.getElementById('exportBtn').addEventListener('click', exportJson);
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    if(!confirm('確定要清空這個排休系統的設定嗎？')) return;
+    localStorage.removeItem('shiftSchedulerV4Route_mobile');
+    location.reload();
+  });
+  yearEl.addEventListener('change', saveToLocal);
+  monthEl.addEventListener('change', saveToLocal);
+}
+boot();
+</script>
+</body>
+</html>
